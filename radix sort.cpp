@@ -4,6 +4,18 @@ using namespace std;
 
 int const bitsSortedOn = 3;
 
+void printHexArray(int *arr, int n) {
+	for (int i=0; i<n; i++) {
+		cout << hex << arr[i] << endl;
+	}
+}
+
+void printArray(int *arr, int n) {
+	for (int i=0; i<n; i++) {
+		cout << arr[i] << endl;
+	}
+}
+
 // optimized standard radix sort without copy back
 int radixSortWithoutCopyBack(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
