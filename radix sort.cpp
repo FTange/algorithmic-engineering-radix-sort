@@ -5,7 +5,23 @@ using namespace std;
 
 int const bitsSortedOn = 3;
 
-bool isSorted(int *arr, int size);
+void printBinaryArray(int *arr, int n) {
+	for (int i=0; i<n; i++) {
+		cout << bitset<8>(arr[i]) << endl;
+	}
+}
+
+void printBucketArray(int *matrix, int n, int *freq, int bitsSortedOn) {
+	int buckets = 1 << bitsSortedOn;
+	for (int i = 0; i < buckets; i++) {
+		int bucketOffset = i * n, j = 0;
+		cout << "printing contents of bucket " << i << endl;
+		while (j < freq[i]) {
+			cout << "    " << hex << matrix[bucketOffset + j++] << endl;
+		}
+	}
+	cout << endl;
+}
 void printHexArray(int *arr, int n) {
 	for (int i=0; i<n; i++) {
 		cout << hex << arr[i] << endl;
