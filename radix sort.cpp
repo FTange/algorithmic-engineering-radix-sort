@@ -1,9 +1,11 @@
 #include <iostream>
+#include <bitset>
 
 using namespace std;
 
 int const bitsSortedOn = 3;
 
+bool isSorted(int *arr, int size);
 void printHexArray(int *arr, int n) {
 	for (int i=0; i<n; i++) {
 		cout << hex << arr[i] << endl;
@@ -57,7 +59,6 @@ int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	int shift = 0, iteration = 0;
 
 	while (shift < 32) {
-		cout << iteration << endl;
 		for (int i=0; i<size; i++) { // count frequencies
 			freq[iteration][(arr[i] >> shift) & k]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
@@ -83,6 +84,7 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	for (int i=0; i<buckets; i++) freq[i] = 0;
 	int *tmp = new int[size];
 	int shift = 0;
+	bool exitedEarly = false;
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
@@ -95,7 +97,7 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 			freq[i] = 0; }
 
 		shift += bitsSortedOn;
-		if (!(shift < 32)) { break; }
+		if (!(shift < 32)) { exitedEarly = true; break; }
 
 		for (int i=0; i<size; i++) { // count frequencies
 			freq[(tmp[i] >> shift) & k]++; }
@@ -108,7 +110,7 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 		shift += bitsSortedOn;
 
 	}
-	if (32 % bitsSortedOn != 0) {
+	if (exitedEarly) {
 		for (int i=0; i<size; i++) {
 			arr[i] = tmp[i];
 		}
@@ -128,6 +130,7 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 			freq[i][j] = 0;
 	int *tmp = new int[size];
 	int shift = 0, iteration = 0;
+	bool exitedEarly = false;
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
@@ -139,7 +142,7 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 
 		iteration++;
 		shift += bitsSortedOn;
-		if (!(shift < 32)) { break; }
+		if (!(shift < 32)) { exitedEarly = true; break; }
 
 		for (int i=0; i<size; i++) { // count frequencies
 			freq[iteration][(tmp[i] >> shift) & k]++; }
@@ -150,7 +153,7 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 		shift += bitsSortedOn;
 		iteration++;
 	}
-	if (32 % bitsSortedOn != 0) {
+	if (exitedEarly) {
 		for (int i=0; i<size; i++) {
 			arr[i] = tmp[i];
 		}
@@ -195,6 +198,7 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 
 	return 0;
 }
+
 
 bool isSorted(int *arr, int size) {
 	for (int i=0, end = size-1; i<end; i++) {
