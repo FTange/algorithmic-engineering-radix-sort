@@ -167,6 +167,12 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
  * Idea from algorithm 1 in article
  * Allocate buckets for each possible value for the sorted in bits
  * Uses much more memory when sorting on more bits
+ *
+ * segfaults on my machine, macbook pro 2011 w 16gb ram, when sorting this many ints
+ * 15 bits on 100.000 numbers
+ * 12 bits on 1.000.000 numbers
+ * 8 bits on 10.000.000 numbers
+ * 5 bits on 100.000.000 numbers
  */
 int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
@@ -199,6 +205,109 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+// Same behaviour as the version above
+int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const k = buckets-1;
+	int const passes = 32 / bitsSortedOn + 1;
+	int freq[passes][buckets];
+	for (int i=0; i<passes; i++)
+		for (int j=0; j<buckets; j++)
+			freq[i][j] = 0;
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+	int shift = 0, iteration = 0;
+
+	while (shift < 32) {
+		for (int i=0; i < size; i++) {
+			int bucket = (arr[i] >> shift) & k;
+			tmp[freq[iteration][bucket] + size * bucket] = arr[i];
+			freq[iteration][bucket]++;
+		}
+		// Go through each bucket and copy all its content back to arr
+		int elem = size-1;
+		for (int bucket=buckets-1; bucket>=0; bucket--) {
+			while (freq[iteration][bucket] != 0) {
+				arr[elem--] = tmp[bucket*size + --freq[iteration][bucket]];
+			}
+		}
+		shift += bitsSortedOn;
+		iteration++;
+	}
+
+	free(tmp);
+
+	return 0;
+}
+
+/*
+ * With two matrixes to sort back and forth between
+ * freq matrix can be change to two vectors
+ * can't sort up to 1.000.000 without problems
+ * above that it seems to have same behaviour as with only 1 tmp matrix
+*/
+int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const k = buckets-1;
+	int const passes = 32 / bitsSortedOn + 1;
+	int freq[passes][buckets];
+	for (int i=0; i<passes; i++)
+		for (int j=0; j<buckets; j++)
+			freq[i][j] = 0;
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp1 = (int *) malloc(sizeof(int) * size * buckets);
+	int *tmp2 = (int *) malloc(sizeof(int) * size * buckets);
+	int shift = bitsSortedOn, currIt = 0, prevIt, lastUsedTmp = 1;
+	// begin by sorting into tmp
+	for (int i=0; i < size; i++) {
+		int bucket = arr[i] & k;
+		tmp1[freq[currIt][bucket] + size * bucket] = arr[i];
+		freq[currIt][bucket]++;
+	}
+
+	while (shift < 32) {
+		prevIt = currIt++;
+		// sorts from tmp1 into tmp2
+		for (int bucket=0; bucket<buckets; bucket++) {
+			int bucketOffset = bucket * size, j = 0;
+		    int	elemsInBucket = freq[prevIt][bucket];
+			while (j < elemsInBucket) {
+				int elem = tmp1[bucketOffset + j++];
+				tmp2[size * ((elem >> shift) & k) + freq[currIt][(elem >> shift) & k]++] = elem;
+			}
+		}
+		shift += bitsSortedOn;
+		if (!(shift < 32)) {
+			lastUsedTmp = 2;
+			break;
+		}
+		prevIt = currIt++;
+		// sorts from tmp2 back into tmp1
+		for (int bucket=0; bucket<buckets; bucket++) {
+			int bucketOffset = bucket * size, j = 0;
+		    int	elemsInBucket = freq[prevIt][bucket];
+			while (j < elemsInBucket) {
+				int elem = tmp2[bucketOffset + j++];
+				tmp1[size * ((elem >> shift) & k) + freq[currIt][(elem >> shift) & k]++] = elem;
+			}
+		}
+		shift += bitsSortedOn;
+	}
+	shift -= bitsSortedOn;
+	int *tmp = (lastUsedTmp == 1) ? tmp1 : tmp2;
+	// copy back into array
+	for (int bucket=buckets-1, elem = size-1; bucket>=0; bucket--) {
+		int bucketOffset = bucket*size;
+		while (freq[currIt][bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[currIt][bucket]];
+			int curr = tmp[bucketOffset + freq[currIt][bucket]];
+		}
+	}
+
+	free(tmp1);
+	free(tmp2);
+	return 0;
+}
 
 bool isSorted(int *arr, int size) {
 	for (int i=0, end = size-1; i<end; i++) {
