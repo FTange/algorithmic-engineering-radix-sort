@@ -1,5 +1,7 @@
 #include <iostream>
 #include <bitset>
+//#include <emmintrin.h>
+#include <xmmintrin.h>
 
 using namespace std;
 
@@ -7,7 +9,7 @@ int const bitsSortedOn = 3;
 
 void printBinaryArray(int *arr, int n) {
 	for (int i=0; i<n; i++) {
-		cout << bitset<8>(arr[i]) << endl;
+		cout << bitset<32>(arr[i]) << endl;
 	}
 }
 
@@ -48,7 +50,10 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[i] += freq[i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[(arr[i] >> shift) & k]] = arr[i]; }
+			int index = --freq[(arr[i] >> shift) & k];
+			// tmp[index] = arr[i]; 
+			_mm_stream_si32(&tmp[index], arr[i]);
+		}
 		for (int i=0; i<buckets; i++) { // set frequencies to 0
 			freq[i] = 0; }
 		for (int i=0; i<size; i++) { // copy from tmp back to arr
@@ -325,6 +330,90 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+int msdLsdRadixSort(int *arr, int size, int msdBits, int lsdBits) {
+	int const msdBuckets = 1 << msdBits;
+	int bitMask = msdBuckets-1;
+	int *freq = (int *) calloc(msdBuckets, sizeof(int));
+	int *tmp = (int *) malloc(sizeof(int) * size);
+	// indexes of where each msdBuckets is placed, first one obv begins at 0
+	int msdIndexes[msdBuckets+1]; msdIndexes[0] = 0; msdIndexes[msdBuckets] = size;
+	int shift = 32 - msdBits;
+
+	// TODO msd-sort
+	for (int i=0; i<size; i++) { // count frequencies
+		freq[(arr[i] >> shift) & bitMask]++; }
+	for (int i=1; i<msdBuckets; i++) { // sum frequencies
+		freq[i] += freq[i-1]; 
+		msdIndexes[i] = freq[i-1];
+	}
+	for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
+		int index = --freq[(arr[i] >> shift) & bitMask];
+		tmp[index] = arr[i]; 
+	}
+	for (int i=0; i<size; i++) { // copy from tmp back to arr
+		arr[i] = tmp[i]; }
+
+	// variables for sorting lsd sorting
+	int const lsdBuckets = 1 << lsdBits;
+	bitMask = lsdBuckets-1;
+	free(freq); free(tmp);
+	freq = (int *) calloc(lsdBuckets, sizeof(int));
+	shift = 0;
+	int *tmp1 = (int *) malloc(sizeof(int) * size);
+	int *tmp2 = (int *) malloc(sizeof(int) * size);
+
+	// TODO sort rest using lsd
+	// go through each bucket and sort it in lsd fashion
+	for (int bucket=0; bucket < msdBuckets; bucket++) {
+		// cout << "sorting bucket " << bucket << endl;
+		shift = 0;
+		int remainingBits = 32 - msdBits;
+		// start and end indexes of the elems in the bucket in arr
+		int start = msdIndexes[bucket], end = msdIndexes[bucket+1]; 
+		int elemts = end-start;
+		bool exitedEarly = false;
+		// don't sort if bucket contains less than one element
+		if ((end-start) < 2) continue;
+		// copy the elems of the bucket into tmp1
+		for (int i = start, j = 0; i < end; i++,j++) { 
+			tmp1[j] = arr[i];
+		}
+
+		// sort the bucket in lsd fashion by sorting between tmp1 and 2
+		while (shift < remainingBits) {
+			for (int i=0; i<elemts; i++) {
+				freq[(tmp1[i] >> shift) & bitMask]++; }
+			for (int i=1; i<lsdBuckets; i++) {
+				freq[i] += freq[i-1]; }
+			for (int i=elemts-1; i >= 0; i--) {
+				tmp2[--freq[(tmp1[i] >> shift) & bitMask]] = tmp1[i]; }
+			for (int i=0; i<lsdBuckets; i++) {
+				freq[i] = 0; }
+
+			shift += lsdBits;
+			if (!(shift < remainingBits)) { exitedEarly = true; break; }
+
+			for (int i=0; i<elemts; i++) { // count frequencies
+				freq[(tmp2[i] >> shift) & bitMask]++; }
+			for (int i=1; i<lsdBuckets; i++) { // sum frequencies
+				freq[i] += freq[i-1]; }
+			for (int i=elemts-1; i >= 0; i--) { // move nodes to correct loc in tmp1
+				tmp1[--freq[(tmp2[i] >> shift) & bitMask]] = tmp2[i]; }
+			for (int i=0; i<lsdBuckets; i++) { // set frequencies to 0
+				freq[i] = 0; }
+			shift += lsdBits;
+	   	}
+		// copy from the correct bucket depending on which was last sorted into
+		tmp = (exitedEarly) ? tmp2 : tmp1;
+		// copy back from tmp into the correct position of arr
+		for (int i = start, j = 0; i < end; i++,j++) { 
+			arr[i] = tmp[j]; }
+	}
+	free(tmp1); free(tmp2);
+	free(freq);
+	return 0;
+}
+
 bool isSorted(int *arr, int size) {
 	for (int i=0, end = size-1; i<end; i++) {
 		if (arr[i] > arr[i+1]) {
@@ -346,7 +435,8 @@ void testBitsSortedOn(int N, int reps) {
 				array[j] = rand();
 			}
 			clock_t t = clock();
-			radixSortWoCountingFreq(array, N, i);
+			// radixSortWoCountingFreq(array, N, i);
+			radixSort(array, N, i);
 			times[i] += clock() - t;
 		}
 	}
