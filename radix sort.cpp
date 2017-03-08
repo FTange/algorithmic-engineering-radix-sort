@@ -38,7 +38,7 @@ void printArray(int *arr, int n) {
 
 int radixSort(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int freq[buckets];
 	for (int i=0; i<buckets; i++) freq[i] = 0;
 	int *tmp = new int[size];
@@ -46,11 +46,11 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[(arr[i] >> shift) & k]++; }
+			freq[(arr[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[i] += freq[i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			int index = --freq[(arr[i] >> shift) & k];
+			int index = --freq[(arr[i] >> shift) & bitMask];
 			// tmp[index] = arr[i]; 
 			_mm_stream_si32(&tmp[index], arr[i]);
 		}
@@ -69,7 +69,7 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 //
 int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int const passes = 32 / bitsSortedOn + 1;
 	// better to store on heap with optimized zero assignment?
 	int freq[passes][buckets];
@@ -81,11 +81,11 @@ int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(arr[i] >> shift) & k]++; }
+			freq[iteration][(arr[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[iteration][i] += freq[iteration][i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[iteration][(arr[i] >> shift) & k]] = arr[i]; }
+			tmp[--freq[iteration][(arr[i] >> shift) & bitMask]] = arr[i]; }
 		for (int i=0; i<size; i++) { // copy from tmp back to arr
 			arr[i] = tmp[i]; }
 		shift += bitsSortedOn;
@@ -100,7 +100,7 @@ int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 // optimized standard radix sort without copy back
 int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int freq[buckets];
 	for (int i=0; i<buckets; i++) freq[i] = 0;
 	int *tmp = new int[size];
@@ -109,11 +109,11 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[(arr[i] >> shift) & k]++; }
+			freq[(arr[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[i] += freq[i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[(arr[i] >> shift) & k]] = arr[i]; }
+			tmp[--freq[(arr[i] >> shift) & bitMask]] = arr[i]; }
 		for (int i=0; i<buckets; i++) { // set frequencies to 0
 			freq[i] = 0; }
 
@@ -121,11 +121,11 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 		if (!(shift < 32)) { exitedEarly = true; break; }
 
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[(tmp[i] >> shift) & k]++; }
+			freq[(tmp[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[i] += freq[i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes to correct loc in arr
-			arr[--freq[(tmp[i] >> shift) & k]] = tmp[i]; }
+			arr[--freq[(tmp[i] >> shift) & bitMask]] = tmp[i]; }
 		for (int i=0; i<buckets; i++) { // set frequencies to 0
 			freq[i] = 0; }
 		shift += bitsSortedOn;
@@ -143,7 +143,7 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 
 int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int const passes = 32 / bitsSortedOn + 1;
 	int freq[passes][buckets];
 	for (int i=0; i<passes; i++)
@@ -155,22 +155,22 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 
 	while (shift < 32) {
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(arr[i] >> shift) & k]++; }
+			freq[iteration][(arr[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[iteration][i] += freq[iteration][i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[iteration][(arr[i] >> shift) & k]] = arr[i]; }
+			tmp[--freq[iteration][(arr[i] >> shift) & bitMask]] = arr[i]; }
 
 		iteration++;
 		shift += bitsSortedOn;
 		if (!(shift < 32)) { exitedEarly = true; break; }
 
 		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(tmp[i] >> shift) & k]++; }
+			freq[iteration][(tmp[i] >> shift) & bitMask]++; }
 		for (int i=1; i<buckets; i++) { // sum frequencies
 			freq[iteration][i] += freq[iteration][i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes to correct loc in arr
-			arr[--freq[iteration][(tmp[i] >> shift) & k]] = tmp[i]; }
+			arr[--freq[iteration][(tmp[i] >> shift) & bitMask]] = tmp[i]; }
 		shift += bitsSortedOn;
 		iteration++;
 	}
@@ -197,7 +197,7 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
  */
 int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int freq[buckets];
 	for (int i=0; i<buckets; i++) freq[i] = 0;
 	// can't use new since buckets and size aren't known and compile time
@@ -205,7 +205,7 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	int shift = 0;
 	while (shift < 32) {
 		for (int i=0; i < size; i++) {
-			long bucket = (arr[i] >> shift) & k;
+			long bucket = (arr[i] >> shift) & bitMask;
 			tmp[freq[bucket] + size * bucket] = arr[i];
 			freq[bucket]++;
 		}
@@ -229,7 +229,7 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 // Same behaviour as the version above
 int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int const passes = 32 / bitsSortedOn + 1;
 	int freq[passes][buckets];
 	for (int i=0; i<passes; i++)
@@ -241,7 +241,7 @@ int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
 
 	while (shift < 32) {
 		for (int i=0; i < size; i++) {
-			long bucket = (arr[i] >> shift) & k;
+			long bucket = (arr[i] >> shift) & bitMask;
 			tmp[freq[iteration][bucket] + size * bucket] = arr[i];
 			freq[iteration][bucket]++;
 		}
@@ -269,7 +269,7 @@ int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
 */
 int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
-	int const k = buckets-1;
+	int const bitMask = buckets-1;
 	int const passes = 32 / bitsSortedOn + 1;
 	int freq[passes][buckets];
 	for (int i=0; i<passes; i++)
@@ -281,7 +281,7 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	int shift = bitsSortedOn, currIt = 0, prevIt, lastUsedTmp = 1;
 	// begin by sorting into tmp
 	for (long i=0; i < size; i++) {
-		long bucket = arr[i] & k;
+		long bucket = arr[i] & bitMask;
 		tmp1[freq[currIt][bucket] + size * bucket] = arr[i];
 		freq[currIt][bucket]++;
 	}
@@ -294,7 +294,7 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 			long elemsInBucket = freq[prevIt][bucket];
 			while (j < elemsInBucket) {
 				long elem = tmp1[bucketOffset + j++];
-				tmp2[size * ((elem >> shift) & k) + freq[currIt][(elem >> shift) & k]++] = elem;
+				tmp2[size * ((elem >> shift) & bitMask) + freq[currIt][(elem >> shift) & bitMask]++] = elem;
 			}
 		}
 		shift += bitsSortedOn;
@@ -309,7 +309,7 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 		    long	elemsInBucket = freq[prevIt][bucket];
 			while (j < elemsInBucket) {
 				long elem = tmp2[bucketOffset + j++];
-				tmp1[size * ((elem >> shift) & k) + freq[currIt][(elem >> shift) & k]++] = elem;
+				tmp1[size * ((elem >> shift) & bitMask) + freq[currIt][(elem >> shift) & bitMask]++] = elem;
 			}
 		}
 		shift += bitsSortedOn;
