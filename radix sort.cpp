@@ -1,7 +1,9 @@
 #include <iostream>
 #include <bitset>
 //#include <emmintrin.h>
-#include <xmmintrin.h>
+// #include <xmmintrin.h>
+#include <immintrin.h>
+
 
 using namespace std;
 
@@ -24,6 +26,7 @@ void printBucketArray(int *matrix, int n, int *freq, int bitsSortedOn) {
 	}
 	cout << endl;
 }
+
 void printHexArray(int *arr, int n) {
 	for (int i=0; i<n; i++) {
 		cout << hex << arr[i] << endl;
@@ -208,6 +211,63 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 			long bucket = (arr[i] >> shift) & bitMask;
 			tmp[freq[bucket] + size * bucket] = arr[i];
 			freq[bucket]++;
+		}
+		// Go through each bucket and copy all its content back to arr
+		int elem = size-1;
+		for (long bucket=buckets-1; bucket>=0; bucket--) {
+			while (freq[bucket] != 0) {
+				arr[elem--] = tmp[bucket*size + --freq[bucket]];
+			}
+		}
+		for (int i=0; i<buckets; i++) { // set frequencies to 0
+			freq[i] = 0; }
+		shift += bitsSortedOn;
+	}
+
+	free(tmp);
+
+	return 0;
+}
+
+int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const bitMask = buckets-1;
+	int freq[buckets];
+	for (int i=0; i<buckets; i++) freq[i] = 0;
+	int writeBuffer[buckets][8];
+	for (int i = 0; i < buckets; i++) {
+		for (int j = 0; j < 8; j++) {
+			writeBuffer[i][j] = 7;
+		}
+	}
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+	int shift = 0;
+	while (shift < 32) {
+		for (int i=0; i < size; i++) {
+			long bucket = (arr[i] >> shift) & bitMask;
+			int bufferIndex = freq[bucket] & 7;
+			writeBuffer[bucket][bufferIndex] = arr[i];
+			freq[bucket]++;
+			if ((freq[bucket] & 7) == 0) {
+				long bucketOffset = size * bucket;
+				int currFreq = freq[bucket];
+				int *address = tmp + bucketOffset + currFreq - 8;
+				tmp[bucketOffset + currFreq - 8] = writeBuffer[bucket][0];
+				tmp[bucketOffset + currFreq - 7] = writeBuffer[bucket][1];
+				tmp[bucketOffset + currFreq - 6] = writeBuffer[bucket][2];
+				tmp[bucketOffset + currFreq - 5] = writeBuffer[bucket][3];
+				tmp[bucketOffset + currFreq - 4] = writeBuffer[bucket][4];
+				tmp[bucketOffset + currFreq - 3] = writeBuffer[bucket][5];
+				tmp[bucketOffset + currFreq - 2] = writeBuffer[bucket][6];
+				tmp[bucketOffset + currFreq - 1] = writeBuffer[bucket][7];
+			}
+		}
+		for (long i = 0; i < buckets; i++) {
+			long bucketOffset = size * i;
+			for (int j = (freq[i] & 7)-1, k=1; j >= 0; j--,k++) {
+				tmp[bucketOffset + freq[i] - k] = writeBuffer[i][j];
+			}
 		}
 		// Go through each bucket and copy all its content back to arr
 		int elem = size-1;
@@ -434,8 +494,8 @@ void testBitsSortedOn(int N, int reps) {
 				array[j] = rand();
 			}
 			clock_t t = clock();
-			// radixSortWoCountingFreq(array, N, i);
-			radixSort(array, N, i);
+			radixSortWoCountingFreqW2Tmps(array, N, i);
+			// radixSort(array, N, i);
 			times[i] += clock() - t;
 		}
 	}
@@ -446,4 +506,5 @@ void testBitsSortedOn(int N, int reps) {
 }
 
 int main() {
+
 }
