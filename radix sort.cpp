@@ -267,35 +267,30 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
 		}
 	}
-	// Iteration 3
+	int *lastIterationFreq = (int *) calloc(buckets+1, sizeof(int));
+	// Iteration 3 and 4
 	for (int i=0; i < size; i++) {
 		long bucket = ((unsigned char *)(&arr[i]))[2];
 		tmp[freq[bucket] + size * bucket] = arr[i];
 		freq[bucket]++;
+		lastIterationFreq[((unsigned char *)(&arr[i]))[3]]++;
+	}
+	for (int i=1; i<buckets;i++) {
+		lastIterationFreq[i] += lastIterationFreq[i-1];
 	}
 	// Go through each bucket and copy all its content back to arr
 	elem = size-1;
 	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		// cout << bucket << endl;
 		long bucketOffset = bucket * size;
 		while (freq[bucket] != 0) {
-			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
-		}
-	}
-	// Iteration 4
-	for (int i=0; i < size; i++) {
-		long bucket = ((unsigned char *)(&arr[i]))[3];
-		tmp[freq[bucket] + size * bucket] = arr[i];
-		freq[bucket]++;
-	}
-	// Go through each bucket and copy all its content back to arr
-	elem = size-1;
-	for (long bucket=buckets-1; bucket>=0; bucket--) {
-		long bucketOffset = bucket * size;
-		while (freq[bucket] != 0) {
-			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
+			int currElem = tmp[bucketOffset + --freq[bucket]];
+			int index = --lastIterationFreq[((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
 		}
 	}
 
+	free(lastIterationFreq);
 	free(tmp);
 	return 0;
 }
