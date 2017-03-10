@@ -229,30 +229,99 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+/*
+ * Version hardcoded for sorting for 8 bit by using unsigned char array
+ * to access each byte and loop unrolling, about 10% faster
+ */
+int radixSortWoCountingFreq8Bit(int *arr, int size) {
+	int const buckets = 1 << 8;
+	int const bitMask = buckets-1;
+	int freq[buckets];
+	for (int i=0; i<buckets; i++) freq[i] = 0;
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+
+	// Iteration 1
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		tmp[freq[bucket] + size * bucket] = arr[i];
+		freq[bucket]++;
+	}
+	// Go through each bucket and copy all its content back to arr
+	int elem = size-1;
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
+		}
+	}
+	// Iteration 2
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[1];
+		tmp[freq[bucket] + size * bucket] = arr[i];
+		freq[bucket]++;
+	}
+	// Go through each bucket and copy all its content back to arr
+	elem = size-1;
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
+		}
+	}
+	// Iteration 3
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[2];
+		tmp[freq[bucket] + size * bucket] = arr[i];
+		freq[bucket]++;
+	}
+	// Go through each bucket and copy all its content back to arr
+	elem = size-1;
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
+		}
+	}
+	// Iteration 4
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[3];
+		tmp[freq[bucket] + size * bucket] = arr[i];
+		freq[bucket]++;
+	}
+	// Go through each bucket and copy all its content back to arr
+	elem = size-1;
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
+		}
+	}
+
+	free(tmp);
+	return 0;
+}
+
 int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	int freq[buckets];
 	for (int i=0; i<buckets; i++) freq[i] = 0;
 	int writeBuffer[buckets][8];
-	for (int i = 0; i < buckets; i++) {
-		for (int j = 0; j < 8; j++) {
-			writeBuffer[i][j] = 7;
-		}
-	}
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
 	int shift = 0;
 	while (shift < 32) {
 		for (int i=0; i < size; i++) {
 			long bucket = (arr[i] >> shift) & bitMask;
+			// find correct loc in write buffer using last 3 bits of the freq count for the bucket
 			int bufferIndex = freq[bucket] & 7;
 			writeBuffer[bucket][bufferIndex] = arr[i];
 			freq[bucket]++;
+			// the write buffer is full, write it to tmp - use intel intrinsic operation?
 			if ((freq[bucket] & 7) == 0) {
 				long bucketOffset = size * bucket;
 				int currFreq = freq[bucket];
-				int *address = tmp + bucketOffset + currFreq - 8;
 				tmp[bucketOffset + currFreq - 8] = writeBuffer[bucket][0];
 				tmp[bucketOffset + currFreq - 7] = writeBuffer[bucket][1];
 				tmp[bucketOffset + currFreq - 6] = writeBuffer[bucket][2];
@@ -263,6 +332,7 @@ int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 				tmp[bucketOffset + currFreq - 1] = writeBuffer[bucket][7];
 			}
 		}
+		// move the remaining elements from write buffers to array
 		for (long i = 0; i < buckets; i++) {
 			long bucketOffset = size * i;
 			for (int j = (freq[i] & 7)-1, k=1; j >= 0; j--,k++) {
@@ -276,13 +346,10 @@ int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 				arr[elem--] = tmp[bucket*size + --freq[bucket]];
 			}
 		}
-		for (int i=0; i<buckets; i++) { // set frequencies to 0
-			freq[i] = 0; }
 		shift += bitsSortedOn;
 	}
 
 	free(tmp);
-
 	return 0;
 }
 
@@ -494,7 +561,7 @@ void testBitsSortedOn(int N, int reps) {
 				array[j] = rand();
 			}
 			clock_t t = clock();
-			radixSortWoCountingFreqW2Tmps(array, N, i);
+			radixSortWoCountingFreq(array, N, i);
 			// radixSort(array, N, i);
 			times[i] += clock() - t;
 		}
@@ -506,5 +573,4 @@ void testBitsSortedOn(int N, int reps) {
 }
 
 int main() {
-
 }
