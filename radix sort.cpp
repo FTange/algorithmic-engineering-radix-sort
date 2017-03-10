@@ -219,8 +219,6 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 				arr[elem--] = tmp[bucket*size + --freq[bucket]];
 			}
 		}
-		for (int i=0; i<buckets; i++) { // set frequencies to 0
-			freq[i] = 0; }
 		shift += bitsSortedOn;
 	}
 
@@ -353,41 +351,6 @@ int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-// Same behaviour as the version above
-int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
-	int const buckets = 1 << bitsSortedOn;
-	int const bitMask = buckets-1;
-	int const passes = 32 / bitsSortedOn + 1;
-	int freq[passes][buckets];
-	for (int i=0; i<passes; i++)
-		for (int j=0; j<buckets; j++)
-			freq[i][j] = 0;
-	// can't use new since buckets and size aren't known and compile time
-	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
-	int shift = 0, iteration = 0;
-
-	while (shift < 32) {
-		for (int i=0; i < size; i++) {
-			long bucket = (arr[i] >> shift) & bitMask;
-			tmp[freq[iteration][bucket] + size * bucket] = arr[i];
-			freq[iteration][bucket]++;
-		}
-		// Go through each bucket and copy all its content back to arr
-		int elem = size-1;
-		for (long bucket=buckets-1; bucket>=0; bucket--) {
-			while (freq[iteration][bucket] != 0) {
-				arr[elem--] = tmp[bucket*size + --freq[iteration][bucket]];
-			}
-		}
-		shift += bitsSortedOn;
-		iteration++;
-	}
-
-	free(tmp);
-
-	return 0;
-}
-
 /*
  * With two matrixes to sort back and forth between
  * freq matrix can be change to two vectors
@@ -397,31 +360,29 @@ int radixSortWoCountingFreqWFreqMatrix(int *arr, int size, int bitsSortedOn) {
 int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int const passes = 32 / bitsSortedOn + 1;
-	int freq[passes][buckets];
-	for (int i=0; i<passes; i++)
-		for (int j=0; j<buckets; j++)
-			freq[i][j] = 0;
+	int freq[2][buckets];
+	for (int i=0; i<buckets; i++) freq[0][i] = 0;
+	for (int i=0; i<buckets; i++) freq[1][i] = 0;
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp1 = (int *) malloc(sizeof(int) * size * buckets);
 	int *tmp2 = (int *) malloc(sizeof(int) * size * buckets);
-	int shift = bitsSortedOn, currIt = 0, prevIt, lastUsedTmp = 1;
+	int shift = bitsSortedOn, lastUsedTmp = 1;
 	// begin by sorting into tmp
 	for (long i=0; i < size; i++) {
 		long bucket = arr[i] & bitMask;
-		tmp1[freq[currIt][bucket] + size * bucket] = arr[i];
-		freq[currIt][bucket]++;
+		tmp1[freq[0][bucket] + size * bucket] = arr[i];
+		freq[0][bucket]++;
 	}
 
 	while (shift < 32) {
-		prevIt = currIt++;
 		// sorts from tmp1 into tmp2
 		for (long bucket=0; bucket<buckets; bucket++) {
 			long bucketOffset = bucket * size, j = 0;
-			long elemsInBucket = freq[prevIt][bucket];
+			long elemsInBucket = freq[0][bucket];
+		   	freq[0][bucket] = 0;
 			while (j < elemsInBucket) {
 				long elem = tmp1[bucketOffset + j++];
-				tmp2[size * ((elem >> shift) & bitMask) + freq[currIt][(elem >> shift) & bitMask]++] = elem;
+				tmp2[size * ((elem >> shift) & bitMask) + freq[1][(elem >> shift) & bitMask]++] = elem;
 			}
 		}
 		shift += bitsSortedOn;
@@ -429,25 +390,26 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 			lastUsedTmp = 2;
 			break;
 		}
-		prevIt = currIt++;
 		// sorts from tmp2 back into tmp1
 		for (long bucket=0; bucket<buckets; bucket++) {
 			long bucketOffset = bucket * size, j = 0;
-		    long	elemsInBucket = freq[prevIt][bucket];
+		    long elemsInBucket = freq[1][bucket];
+			freq[1][bucket] = 0;
 			while (j < elemsInBucket) {
 				long elem = tmp2[bucketOffset + j++];
-				tmp1[size * ((elem >> shift) & bitMask) + freq[currIt][(elem >> shift) & bitMask]++] = elem;
+				tmp1[size * ((elem >> shift) & bitMask) + freq[0][(elem >> shift) & bitMask]++] = elem;
 			}
 		}
 		shift += bitsSortedOn;
 	}
 	shift -= bitsSortedOn;
 	int *tmp = (lastUsedTmp == 1) ? tmp1 : tmp2;
+	int freqBucket = (lastUsedTmp == 1) ? 0 : 1;
 	// copy back into array
 	for (int bucket=buckets-1, elem = size-1; bucket>=0; bucket--) {
 		long bucketOffset = bucket*size;
-		while (freq[currIt][bucket] != 0) {
-			arr[elem--] = tmp[bucketOffset + --freq[currIt][bucket]];
+		while (freq[freqBucket][bucket] != 0) {
+			arr[elem--] = tmp[bucketOffset + --freq[freqBucket][bucket]];
 		}
 	}
 
