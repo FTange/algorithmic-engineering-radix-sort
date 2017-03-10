@@ -234,8 +234,7 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 int radixSortWoCountingFreq8Bit(int *arr, int size) {
 	int const buckets = 1 << 8;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
+	int freq[buckets] = {0};
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
 
@@ -267,7 +266,7 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 			arr[elem--] = tmp[bucketOffset + --freq[bucket]];
 		}
 	}
-	int *lastIterationFreq = (int *) calloc(buckets+1, sizeof(int));
+	int lastIterationFreq[buckets] = {0};
 	// Iteration 3 and 4
 	for (int i=0; i < size; i++) {
 		long bucket = ((unsigned char *)(&arr[i]))[2];
@@ -290,7 +289,6 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 		}
 	}
 
-	free(lastIterationFreq);
 	free(tmp);
 	return 0;
 }
