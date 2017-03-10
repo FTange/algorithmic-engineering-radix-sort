@@ -529,3 +529,67 @@ void testBitsSortedOn(int N, int reps) {
 
 int main() {
 }
+
+
+void initialTest() {
+	int start = 1 << 20;
+	int end = (1 << 20) * 10;
+	int inc = 10000000;
+	// Test 1
+	for (int i=1; i<=16;i++) {
+		for (int k = start; k < end; k+=inc) {
+			cout << "iteration " << k << endl;
+			int *array = new int[k];
+			srand(24); // use srand to make the arrays identical
+			for (int j = 0; j<k; j++) {
+				array[j] = rand();
+			}
+			// Test this function call
+			radixSort(array, k, i);
+
+			delete[] array;
+		}
+	}
+	// Test 2
+	for (int i=1; i<=16;i++) {
+		for (int k = start; k < end; k+=inc) {
+			int *array = new int[k];
+			srand(24); // use srand to make the arrays identical
+			for (int j = 0; j<k; j++) {
+				array[j] = rand();
+			}
+			// Test this function call
+			radixSortWoCopyBack(array, k, i);
+
+			delete[] array;
+		}
+	}
+	// Test 3
+	for (int i=1; i<=16;i++) {
+		for (int k = start; k < end; k+=inc) {
+			int *array = new int[k];
+			srand(24); // use srand to make the arrays identical
+			for (int j = 0; j<k; j++) {
+				array[j] = rand();
+			}
+			// Test this function call
+			radixSortWoCountingFreq(array, k, i);
+
+			delete[] array;
+		}
+	}
+	// Test 4
+	for (int i=1; i<=16;i++) {
+		for (int k = start; k < end; k+=inc) {
+			int *array = new int[k];
+			srand(24); // use srand to make the arrays identical
+			for (int j = 0; j<k; j++) {
+				array[j] = rand();
+			}
+			// Test this function call
+			radixSortWoCountingFreqW2Tmps(array, k, i);
+
+			delete[] array;
+		}
+	}
+}
