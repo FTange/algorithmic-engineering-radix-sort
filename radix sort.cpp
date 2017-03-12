@@ -54,8 +54,8 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 			freq[i] += freq[i-1]; }
 		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
 			int index = --freq[(arr[i] >> shift) & bitMask];
-			// tmp[index] = arr[i]; 
-			_mm_stream_si32(&tmp[index], arr[i]);
+			tmp[index] = arr[i]; 
+			// _mm_stream_si32(&tmp[index], arr[i]);
 		}
 		for (int i=0; i<buckets; i++) { // set frequencies to 0
 			freq[i] = 0; }
@@ -69,7 +69,6 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-//
 int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
@@ -96,7 +95,6 @@ int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
 	}
 
 	delete[] tmp;
-
 	return 0;
 }
 
@@ -190,13 +188,6 @@ int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
 /*
  * Idea from algorithm 1 in article
  * Allocate buckets for each possible value for the sorted in bits
- * Uses much more memory when sorting on more bits
- *
- * segfaults on my machine, macbook pro 2011 w 16gb ram, when sorting this many ints
- * 15 bits on 100.000 numbers
- * 12 bits on 1.000.000 numbers
- * 8 bits on 10.000.000 numbers
- * 5 bits on 100.000.000 numbers
  */
 int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
@@ -224,6 +215,59 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 
 	free(tmp);
 
+	return 0;
+}
+
+/*
+ * using the idea of having the last iterations done at the same time
+ */
+int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const bitMask = buckets-1;
+	int freq[buckets];
+	for (int i=0; i<buckets; i++) freq[i] = 0;
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+	int shift = 0;
+	int regularSortedBits = 32 - bitsSortedOn - bitsSortedOn;
+	while (shift < regularSortedBits) {
+		for (int i=0; i < size; i++) {
+			long bucket = (arr[i] >> shift) & bitMask;
+			tmp[freq[bucket] + size * bucket] = arr[i];
+			freq[bucket]++;
+		}
+		// Go through each bucket and copy all its content back to arr
+		int elem = size-1;
+		for (long bucket=buckets-1; bucket>=0; bucket--) {
+			while (freq[bucket] != 0) {
+				arr[elem--] = tmp[bucket*size + --freq[bucket]];
+			}
+		}
+		shift += bitsSortedOn;
+	}
+	// create freq2 sorted on using shift2 = shift+bitsSortedOn
+	int lastFreq[buckets];
+	int lastShift = shift + bitsSortedOn;
+	for (int i=0; i<buckets; i++) lastFreq[i] = 0;
+	for (int i=0; i < size; i++) {
+		long bucket = (arr[i] >> shift) & bitMask;
+		tmp[freq[bucket] + size * bucket] = arr[i];
+		freq[bucket]++;
+		lastFreq[(arr[i] >> lastShift) & bitMask]++;
+	}
+	for (int i=1; i<buckets; i++)
+		lastFreq[i] += lastFreq[i-1];
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		// cout << bucket << endl;
+		long bucketOffset = bucket * size;
+		while (freq[bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freq[bucket]];
+			int index = --lastFreq[(currElem >> lastShift) & bitMask];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp);
 	return 0;
 }
 
@@ -346,9 +390,6 @@ int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 
 /*
  * With two matrixes to sort back and forth between
- * freq matrix can be change to two vectors
- * can't sort up to 1.000.000 without problems
- * above that it seems to have same behaviour as with only 1 tmp matrix
 */
 int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
@@ -490,8 +531,7 @@ int msdLsdRadixSort(int *arr, int size, int msdBits, int lsdBits) {
 		for (int i = start, j = 0; i < end; i++,j++) { 
 			arr[i] = tmp[j]; }
 	}
-	free(tmp1); free(tmp2);
-	free(freq);
+	free(tmp1); free(tmp2); free(freq);
 	return 0;
 }
 
