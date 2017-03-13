@@ -69,35 +69,6 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-int radixSortFreqMatrix(int *arr, int size, int bitsSortedOn) {
-	int const buckets = 1 << bitsSortedOn;
-	int const bitMask = buckets-1;
-	int const passes = 32 / bitsSortedOn + 1;
-	// better to store on heap with optimized zero assignment?
-	int freq[passes][buckets];
-	for (int i=0; i<passes; i++)
-		for (int j=0; j<buckets; j++)
-			freq[i][j] = 0;
-	int *tmp = new int[size];
-	int shift = 0, iteration = 0;
-
-	while (shift < 32) {
-		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(arr[i] >> shift) & bitMask]++; }
-		for (int i=1; i<buckets; i++) { // sum frequencies
-			freq[iteration][i] += freq[iteration][i-1]; }
-		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[iteration][(arr[i] >> shift) & bitMask]] = arr[i]; }
-		for (int i=0; i<size; i++) { // copy from tmp back to arr
-			arr[i] = tmp[i]; }
-		shift += bitsSortedOn;
-		iteration++;
-	}
-
-	delete[] tmp;
-	return 0;
-}
-
 // optimized standard radix sort without copy back
 int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
@@ -142,48 +113,64 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-int radixSortWoCopyBackFreqMatrix(int *arr, int size, int bitsSortedOn) {
+// Count all frequencies first, then move stuff around
+int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int const passes = 32 / bitsSortedOn + 1;
+	int const passes = 32/bitsSortedOn + 0.5;
 	int freq[passes][buckets];
 	for (int i=0; i<passes; i++)
 		for (int j=0; j<buckets; j++)
 			freq[i][j] = 0;
 	int *tmp = new int[size];
-	int shift = 0, iteration = 0;
 	bool exitedEarly = false;
-
-	while (shift < 32) {
-		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(arr[i] >> shift) & bitMask]++; }
-		for (int i=1; i<buckets; i++) { // sum frequencies
-			freq[iteration][i] += freq[iteration][i-1]; }
-		for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
-			tmp[--freq[iteration][(arr[i] >> shift) & bitMask]] = arr[i]; }
-
-		iteration++;
-		shift += bitsSortedOn;
-		if (!(shift < 32)) { exitedEarly = true; break; }
-
-		for (int i=0; i<size; i++) { // count frequencies
-			freq[iteration][(tmp[i] >> shift) & bitMask]++; }
-		for (int i=1; i<buckets; i++) { // sum frequencies
-			freq[iteration][i] += freq[iteration][i-1]; }
-		for (int i=size-1; i >= 0; i--) { // move nodes to correct loc in arr
-			arr[--freq[iteration][(tmp[i] >> shift) & bitMask]] = tmp[i]; }
-		shift += bitsSortedOn;
-		iteration++;
+	int shifts[passes];
+	shifts[0] = 0;
+	for (int i = 1; i < passes; i++) {
+		shifts[i] = shifts[i-1] + bitsSortedOn;
 	}
-	if (exitedEarly) {
-		for (int i=0; i<size; i++) {
-			arr[i] = tmp[i];
+
+	// Calculate frequencies for every pass at the same time
+	for (int elem = 0; elem < size; elem++) {
+		for (int pass = 0; pass < passes; pass++) {
+			// freq[pass][(arr[elem] >> (bitsSortedOn * pass)) & bitMask]
+			freq[pass][(arr[elem] >> shifts[pass]) & bitMask]++;
 		}
 	}
-	delete[] tmp;
+	// Sum the frequencies
+	for (int i=0; i<passes; i++)
+		for (int j=1; j<buckets; j++)
+			freq[i][j] += freq[i][j-1];
 
+	int shift = 0; // don't use shift array as not in cache
+	for (int pass = 0; pass < passes; pass++) {
+		int *currFreq = freq[pass];
+		for (int elem = size-1; elem >= 0; elem--) {
+			int index = --currFreq[(arr[elem] >> shift) & bitMask];
+			tmp[index] = arr[elem];
+		}
+
+		pass++;
+		shift += bitsSortedOn;
+		currFreq = freq[pass];
+		if (!(pass < passes)) { exitedEarly = true; break; }
+
+		for (int elem = size-1; elem >= 0; elem--) {
+			int index = --currFreq[(tmp[elem] >> shift) & bitMask];
+			arr[index] = tmp[elem];
+		}
+		shift += bitsSortedOn;
+	}
+	// move from tmp to arr if unequal number of passes
+	if (exitedEarly) {
+		for (int elem=0; elem<size; elem++) {
+			arr[elem] = tmp[elem];
+		}
+	}
 	return 0;
 }
+
+
 
 /*
  * Idea from algorithm 1 in article
@@ -230,6 +217,7 @@ int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) 
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
 	int shift = 0;
 	int regularSortedBits = 32 - bitsSortedOn - bitsSortedOn;
+
 	while (shift < regularSortedBits) {
 		for (int i=0; i < size; i++) {
 			long bucket = (arr[i] >> shift) & bitMask;
@@ -311,7 +299,7 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 		}
 	}
 	int lastIterationFreq[buckets] = {0};
-	// Iteration 3 and 4
+	// Iteration 3 and 4 at same time
 	for (int i=0; i < size; i++) {
 		long bucket = ((unsigned char *)(&arr[i]))[2];
 		tmp[freq[bucket] + size * bucket] = arr[i];
@@ -566,6 +554,8 @@ void testBitsSortedOn(int N, int reps) {
 	}
 	delete[] array;
 }
+
+void initialTest();
 
 int main() {
 }
