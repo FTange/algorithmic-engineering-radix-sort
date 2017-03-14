@@ -289,6 +289,60 @@ int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) 
 	return 0;
 }
 
+int radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const bitMask = buckets-1;
+	int *freqTmp = (int *) calloc(buckets, sizeof(int));
+	int *freqArr = (int *) calloc(buckets, sizeof(int));
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+	bool exitedEarly = false;
+	int shiftTmp = 0;
+	int shiftArr = bitsSortedOn;
+	while (shiftTmp < 32) {
+		for (int i=0; i < size; i++) {
+			long bucket = (arr[i] >> shiftTmp) & bitMask;
+			tmp[freqTmp[bucket] + size * bucket] = arr[i];
+			freqTmp[bucket]++;
+			freqArr[(arr[i] >> shiftArr) & bitMask]++;
+		}
+		if (!(shiftArr <= 32)) {
+			exitedEarly = true;
+			break;
+		}
+		// Go through each bucket and copy all its content back to arr
+		for (int i = 1; i < buckets; i++) {
+			freqArr[i] += freqArr[i-1];
+		}
+		for (long bucket=buckets-1; bucket>=0; bucket--) {
+			long bucketOffset = bucket * size;
+			while (freqTmp[bucket] != 0) {
+				int currElem = tmp[bucketOffset + --freqTmp[bucket]];
+				int index = --freqArr[(currElem >> shiftArr) & bitMask];
+				arr[index] = currElem;
+			}
+		}
+		for (int i = 0; i < buckets; i++) {
+			freqArr[i] = 0;
+		}
+		shiftTmp += bitsSortedOn + bitsSortedOn;
+		shiftArr += bitsSortedOn + bitsSortedOn;
+	}
+
+	int elem = size-1;
+	if (exitedEarly) {
+		for (long bucket=buckets-1; bucket>=0; bucket--) {
+			long bucketOffset = bucket * size;
+			while (freqTmp[bucket] != 0) {
+				arr[elem--] = tmp[bucketOffset + --freqTmp[bucket]];
+			}
+		}
+	}
+
+	free(tmp); free(freqArr); free(freqTmp);
+	return 0;
+}
+
 
 /*
  * Version hardcoded for sorting for 8 bit by using unsigned char array
@@ -471,6 +525,7 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+// some issues for bitsSorted = 3,5,7
 int radixSortWoCountingFreqW2TmpsCombinedIt(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
