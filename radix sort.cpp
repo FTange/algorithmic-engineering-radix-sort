@@ -4,7 +4,6 @@
 // #include <xmmintrin.h>
 #include <immintrin.h>
 
-
 using namespace std;
 
 int const bitsSortedOn = 3;
@@ -170,8 +169,6 @@ int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-
-
 /*
  * Idea from algorithm 1 in article
  * Allocate buckets for each possible value for the sorted in bits
@@ -202,6 +199,38 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 
 	free(tmp);
 
+	return 0;
+}
+
+int radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) {
+	int const buckets = 1 << bitsSortedOn;
+	int const bitMask = buckets-1;
+	int freq[buckets];
+	for (int i=0; i<buckets; i++) freq[i] = 0;
+	// can't use new since buckets and size aren't known and compile time
+	int **tmp = (int **) malloc(sizeof(int *) * buckets);
+	for (int i=0; i<buckets; i++)
+		tmp[i] = (int *) malloc(sizeof(int) * size);
+	int shift = 0;
+	while (shift < 32) {
+		for (int i=0; i < size; i++) {
+			long bucket = (arr[i] >> shift) & bitMask;
+			tmp[bucket][freq[bucket]] = arr[i];
+			freq[bucket]++;
+		}
+		// Go through each bucket and copy all its content back to arr
+		int elem = size-1;
+		for (long bucket=buckets-1; bucket>=0; bucket--) {
+			while (freq[bucket] != 0) {
+				arr[elem--] = tmp[bucket][--freq[bucket]];
+			}
+		}
+		shift += bitsSortedOn;
+	}
+
+	for (int i=0; i<buckets; i++)
+		free(tmp[i]);
+	free(tmp);
 	return 0;
 }
 
@@ -647,7 +676,6 @@ void initialTest();
 
 int main() {
 }
-
 
 void initialTest() {
 	int start = 1 << 20;
