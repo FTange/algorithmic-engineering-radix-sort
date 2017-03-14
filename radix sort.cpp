@@ -289,6 +289,7 @@ int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) 
 	return 0;
 }
 
+
 /*
  * Version hardcoded for sorting for 8 bit by using unsigned char array
  * to access each byte and loop unrolling, about 10% faster
@@ -680,12 +681,11 @@ int main() {
 
 void initialTest() {
 	int start = 1 << 20;
-	int end = (1 << 20) * 10;
+	int end = (1 << 20) * 100;
 	int inc = 10000000;
 	// Test 1
 	for (int i=1; i<=16;i++) {
 		for (int k = start; k < end; k+=inc) {
-			cout << "iteration " << k << endl;
 			int *array = new int[k];
 			srand(24); // use srand to make the arrays identical
 			for (int j = 0; j<k; j++) {
@@ -727,20 +727,6 @@ void initialTest() {
 				free(pointers[j]);
 			}
 			free(pointers);
-			delete[] array;
-		}
-	}
-	// Test 4
-	for (int i=1; i<=16;i++) {
-		for (int k = start; k < end; k+=inc) {
-			int *array = new int[k];
-			srand(24); // use srand to make the arrays identical
-			for (int j = 0; j<k; j++) {
-				array[j] = rand();
-			}
-			// Test this function call
-			radixSortWoCountingFreqW2Tmps(array, k, i);
-
 			delete[] array;
 		}
 	}
