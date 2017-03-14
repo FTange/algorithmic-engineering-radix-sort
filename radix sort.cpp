@@ -202,7 +202,7 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
-int radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) {
+int **radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	int freq[buckets];
@@ -227,11 +227,12 @@ int radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) {
 		}
 		shift += bitsSortedOn;
 	}
-
+	/*
 	for (int i=0; i<buckets; i++)
 		free(tmp[i]);
 	free(tmp);
-	return 0;
+	*/
+	return tmp;
 }
 
 /*
@@ -719,8 +720,13 @@ void initialTest() {
 				array[j] = rand();
 			}
 			// Test this function call
-			radixSortWoCountingFreq(array, k, i);
+			int **pointers = radixSortWoCountingFreqPointerArray(array, k, i);
 
+			// finish test before this
+			for (int j = 0, end = (1 << i); j < end; j++) {
+				free(pointers[j]);
+			}
+			free(pointers);
 			delete[] array;
 		}
 	}
