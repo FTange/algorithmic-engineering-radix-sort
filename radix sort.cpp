@@ -3,6 +3,7 @@
 //#include <emmintrin.h>
 // #include <xmmintrin.h>
 #include <immintrin.h>
+#include <fstream>
 
 using namespace std;
 
@@ -116,7 +117,8 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int const passes = 32/bitsSortedOn + 0.5;
+	// ceiling, works for values between 1-16 but kinda silly
+	int const passes = 32.0/bitsSortedOn + 0.99; 
 	int freq[passes][buckets];
 	for (int i=0; i<passes; i++)
 		for (int j=0; j<buckets; j++)
@@ -131,7 +133,7 @@ int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 
 	// Calculate frequencies for every pass at the same time
 	for (int elem = 0; elem < size; elem++) {
-		for (int pass = 0; pass < passes; pass++) {
+		for (int pass = 0; pass < passes; pass++) { // loop unrolling if we know #passes
 			// freq[pass][(arr[elem] >> (bitsSortedOn * pass)) & bitMask]
 			freq[pass][(arr[elem] >> shifts[pass]) & bitMask]++;
 		}
@@ -731,7 +733,95 @@ void testBitsSortedOn(int N, int reps) {
 
 void initialTest();
 
-int main() {
+void testing(int test, string fileEnding) {
+	int start = 10000;
+	int inc   = 1000000;
+	int end   = start *  10;
+	ofstream results;
+	string testFunc = "";
+	switch(test) {
+		case  1: testFunc = "01. radix sort";
+			 	 break;
+		case  2: testFunc = "02. radix sort wo copy back";
+			 	 break;
+		case  3: testFunc = "03. radix sort freqs first";
+			 	 break;
+		case  4: testFunc = "04. radix sort wo counting freqs";
+			 	 break;
+		case  5: testFunc = "05. radix sort wo counting freqs combined last iteration";
+			 	 break;
+		case  6: testFunc = "06. radix sort wo counting freqs copy back arr";
+			 	 break;
+		case  7: testFunc = "07. radix sort freq counting 8-bit hardcoded";
+			 	 break;
+		case  8: testFunc = "08. radix sort with write buffers";
+			 	 break;
+		case  9: testFunc = "09. radix sort freqs count with 2 tmps";
+			 	 break;
+		case 10: testFunc = "10. radix sort freqs count with 2 tmps combined iteration";
+				 break;
+		default: cerr << "unrecognized test value: " << test << endl;
+				 exit(1);
+	}
+
+	results.open("data/" + testFunc + " " + fileEnding + ".csv");
+	results << "input,";
+	for (int i=1; i<=16;i++) {
+		results << i << " bit" << ((i == 1) ? "," : ((i == 16) ? "" : ","));
+	}
+	results << "\n";
+	for (int k = start; k < end; k+=inc) {
+		results << k << ",";
+		for (int i=1; i<=16;i++) {
+			int *array = new int[k];
+			srand(24); // use srand to make the arrays identical
+			for (int j = 0; j<k; j++) {
+				array[j] = rand();
+			}
+			// Test this function call
+			clock_t t1 = clock();
+			switch(test) {
+				case 1: radixSort(array, k, i);
+						break;
+				case 2: radixSortWoCopyBack(array, k, i);
+						break;
+				case 3: radixSortFreqFirst(array, k, i);
+						break;
+				case 4: radixSortWoCountingFreq(array, k, i);
+						break;
+				case 5: radixSortWoCountingFreqCombinedLastIt(array, k, i);
+						break;
+				case 6: radixSortWoCountingFreqCopyBackArr(array, k, i);
+						break;
+				case 7: radixSortWoCountingFreq8Bit(array, k);
+						break;
+				case 8: radixSortWoCountingFreqWBuffers(array, k, i);
+						break;
+				case 9: radixSortWoCountingFreqW2Tmps(array, k, i);
+						break;
+				case 10: radixSortWoCountingFreqW2TmpsCombinedIt(array, k, i);
+						break;
+				default: cout << "this can't happen" << endl;
+			}
+			clock_t t2 = clock();
+			results << (t2-t1) << ((i != 16) ? "," : "");
+
+			delete[] array;
+		}
+		results << "\n" << endl;
+	}
+	results.close();
+}
+
+int main(int argc, char* argv[]) {
+	if (argc != 1) {
+		int test = atoi(argv[1]);
+		string testName = "";
+		if (argc == 3) {
+			testName = argv[2];
+		}
+		testing(test, testName);
+	}
 }
 
 void initialTest() {
