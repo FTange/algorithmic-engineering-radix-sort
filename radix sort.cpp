@@ -412,6 +412,57 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 	return 0;
 }
 
+int radixSortWoCountingFreq8Bitv2(int *arr, int size) {
+	int const buckets = 256;
+	int const bitMask = 255;
+	int freq[2][256] = {0};
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+
+	// Iteration 1
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		tmp[freq[0][bucket]++ + size * bucket] = arr[i];
+		freq[1][((unsigned char *)(&arr[i]))[1]]++;
+	}
+	// Iteration 2, sort back to arr
+	for (int i = 1; i < 256; i++) {
+		freq[1][i] += freq[1][i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[0][bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freq[0][bucket]];
+			int index = --freq[1][((unsigned char *)(&currElem))[1]];
+			arr[index] = currElem;
+		}
+	}
+	for (int i = 0; i < 256; i++) {
+		freq[1][i] = 0;
+	}
+	// Iteration 3
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[2];
+		tmp[freq[0][bucket]++ + size * bucket] = arr[i];
+		freq[1][((unsigned char *)(&arr[i]))[3]]++;
+	}
+	// Iteration 4
+	for (int i = 1; i < 256; i++) {
+		freq[1][i] += freq[1][i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freq[0][bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freq[0][bucket]];
+			int index = --freq[1][((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp);
+	return 0;
+}
+
 int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
@@ -793,7 +844,7 @@ void testing(int test, string fileEnding) {
 						break;
 				case 6: radixSortWoCountingFreqCopyBackArr(array, k, i);
 						break;
-				case 7: radixSortWoCountingFreq8Bit(array, k);
+				case 7: radixSortWoCountingFreq8Bitv2(array, k);
 						break;
 				case 8: radixSortWoCountingFreqWBuffers(array, k, i);
 						break;
@@ -821,7 +872,7 @@ int main(int argc, char* argv[]) {
 			testName = argv[2];
 		}
 		testing(test, testName);
-	}
+	} 
 }
 
 void initialTest() {
