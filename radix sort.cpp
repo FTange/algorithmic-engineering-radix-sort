@@ -39,12 +39,11 @@ void printArray(int *arr, int n) {
 	}
 }
 
-int radixSort(int *arr, int size, int bitsSortedOn) {
+int *radixSort(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
-	int *tmp = new int[size];
+	int *freq = (int *) calloc(buckets, sizeof(int));
+	int *tmp = (int *) malloc(sizeof(int) * size);
 	int shift = 0;
 
 	while (shift < 32) {
@@ -64,18 +63,18 @@ int radixSort(int *arr, int size, int bitsSortedOn) {
 		shift += bitsSortedOn;
 	}
 
-	delete[] tmp;
+	// free(tmp);
+	free(freq);
 
-	return 0;
+	return tmp;
 }
 
 // optimized standard radix sort without copy back
-int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
+int *radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
-	int *tmp = new int[size];
+	int *freq = (int *) calloc(buckets, sizeof(int));
+	int *tmp = (int *) malloc(sizeof(int) * size);
 	int shift = 0;
 	bool exitedEarly = false;
 
@@ -108,14 +107,15 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 			arr[i] = tmp[i];
 		}
 	}
-	delete[] tmp;
+	// free(tmp);
+	free(freq);
 
-	return 0;
+	return tmp;
 }
 
-int radixSortWoCopyBack8Bit(int *arr, int size) {
+int *radixSortWoCopyBack8Bit(int *arr, int size) {
 	int freq[256] = {0};
-	int *tmp = new int[size];
+	int *tmp = (int *) malloc(sizeof(int *) * size);
 
 	// iteration 1
 	for (int i=0; i<size; i++) { // count frequencies
@@ -156,12 +156,12 @@ int radixSortWoCopyBack8Bit(int *arr, int size) {
 	for (int i=0; i<256; i++) {
 		freq[i] = 0; }
 
-	free(tmp);
-	return 0;
+	// free(tmp);
+	return tmp;
 }
 
 // Count all frequencies first, then move stuff around
-int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
+int *radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	// ceiling, works for values between 1-16 but kinda silly
@@ -170,7 +170,7 @@ int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	for (int i=0; i<passes; i++)
 		for (int j=0; j<buckets; j++)
 			freq[i][j] = 0;
-	int *tmp = new int[size];
+	int *tmp = (int *) malloc(sizeof(int) * size);
 	bool exitedEarly = false;
 	int shifts[passes];
 	shifts[0] = 0;
@@ -215,18 +215,17 @@ int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 			arr[elem] = tmp[elem];
 		}
 	}
-	return 0;
+	return tmp;
 }
 
 /*
  * Idea from algorithm 1 in article
  * Allocate buckets for each possible value for the sorted in bits
  */
-int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
+int *radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
+	int *freq = (int *) calloc(buckets, sizeof(int));
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
 	int shift = 0;
@@ -246,9 +245,9 @@ int radixSortWoCountingFreq(int *arr, int size, int bitsSortedOn) {
 		shift += bitsSortedOn;
 	}
 
-	free(tmp);
-
-	return 0;
+	// free(tmp);
+	free(freq);
+	return tmp;
 }
 
 int **radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) {
@@ -287,11 +286,10 @@ int **radixSortWoCountingFreqPointerArray(int *arr, int size, int bitsSortedOn) 
 /*
  * using the idea of having the last iterations done at the same time
  */
-int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) {
+int *radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
+	int *freq = (int *) calloc(buckets, sizeof(int));
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
 	int shift = 0;
@@ -313,9 +311,8 @@ int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) 
 		shift += bitsSortedOn;
 	}
 	// create freq2 sorted on using shift2 = shift+bitsSortedOn
-	int lastFreq[buckets];
+	int *lastFreq = (int *) calloc(buckets, sizeof(int));
 	int lastShift = shift + bitsSortedOn;
-	for (int i=0; i<buckets; i++) lastFreq[i] = 0;
 	for (int i=0; i < size; i++) {
 		long bucket = (arr[i] >> shift) & bitMask;
 		tmp[freq[bucket] + size * bucket] = arr[i];
@@ -334,11 +331,12 @@ int radixSortWoCountingFreqCombinedLastIt(int *arr, int size, int bitsSortedOn) 
 		}
 	}
 
-	free(tmp);
-	return 0;
+	// free(tmp);
+	free(freq); free(lastFreq);
+	return tmp;
 }
 
-int radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
+int *radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	int *freqTmp = (int *) calloc(buckets, sizeof(int));
@@ -388,8 +386,9 @@ int radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
 		}
 	}
 
-	free(tmp); free(freqArr); free(freqTmp);
-	return 0;
+	// free(tmp); 
+	free(freqArr); free(freqTmp);
+	return tmp;
 }
 
 
@@ -397,7 +396,7 @@ int radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
  * Version hardcoded for sorting for 8 bit by using unsigned char array
  * to access each byte and loop unrolling, about 10% faster
  */
-int radixSortWoCountingFreq8Bit(int *arr, int size) {
+int *radixSortWoCountingFreq8Bit(int *arr, int size) {
 	int const buckets = 1 << 8;
 	int const bitMask = buckets-1;
 	int freq[buckets] = {0};
@@ -455,11 +454,11 @@ int radixSortWoCountingFreq8Bit(int *arr, int size) {
 		}
 	}
 
-	free(tmp);
-	return 0;
+	// free(tmp);
+	return tmp;
 }
 
-int radixSortWoCountingFreq8Bitv2(int *arr, int size) {
+int *radixSortWoCountingFreq8Bitv2(int *arr, int size) {
 	int const buckets = 256;
 	int const bitMask = 255;
 	int freq[2][256] = {0};
@@ -506,15 +505,14 @@ int radixSortWoCountingFreq8Bitv2(int *arr, int size) {
 		}
 	}
 
-	free(tmp);
-	return 0;
+	// free(tmp);
+	return tmp;
 }
 
-int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
+int *radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
-	int freq[buckets];
-	for (int i=0; i<buckets; i++) freq[i] = 0;
+	int *freq = (int *) calloc(buckets, sizeof(int));
 	int writeBuffer[buckets][8];
 	// can't use new since buckets and size aren't known and compile time
 	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
@@ -557,14 +555,15 @@ int radixSortWoCountingFreqWBuffers(int *arr, int size, int bitsSortedOn) {
 		shift += bitsSortedOn;
 	}
 
-	free(tmp);
-	return 0;
+	// free(tmp);
+	free(freq);
+	return tmp;
 }
 
 /*
  * With two matrixes to sort back and forth between
 */
-int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
+int **radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	int freq[2][buckets];
@@ -620,13 +619,15 @@ int radixSortWoCountingFreqW2Tmps(int *arr, int size, int bitsSortedOn) {
 		}
 	}
 
-	free(tmp1);
-	free(tmp2);
-	return 0;
+	// free(tmp1); free(tmp2);
+	// must be allocated on the stack to be able to return it
+	int **unfreedArr = (int **) malloc(sizeof(int *) * 2);
+	unfreedArr[0] = tmp1; unfreedArr[1] = tmp2;
+	return unfreedArr;
 }
 
 // some issues for bitsSorted = 3,5,7
-int radixSortWoCountingFreqW2TmpsCombinedIt(int *arr, int size, int bitsSortedOn) {
+int **radixSortWoCountingFreqW2TmpsCombinedIt(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
 	int const bitMask = buckets-1;
 	int freq[3][buckets];
@@ -709,9 +710,10 @@ int radixSortWoCountingFreqW2TmpsCombinedIt(int *arr, int size, int bitsSortedOn
 		}
 	}
 
-	free(tmp1);
-	free(tmp2);
-	return 0;
+	// free(tmp1); free(tmp2);
+	int **unfreedArr = (int **) malloc(sizeof(int *) * 2);
+	unfreedArr[0] = tmp1; unfreedArr[1] = tmp2;
+	return unfreedArr;
 }
 
 int msdLsdRadixSort(int *arr, int size, int msdBits, int lsdBits) {
@@ -910,7 +912,7 @@ void testing(int test, string fileEnding) {
 
 			delete[] array;
 		}
-		results << "\n" << endl;
+		results << "\n";
 	}
 	results.close();
 }
