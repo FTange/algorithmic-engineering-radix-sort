@@ -113,6 +113,53 @@ int radixSortWoCopyBack(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+int radixSortWoCopyBack8Bit(int *arr, int size) {
+	int freq[256] = {0};
+	int *tmp = new int[size];
+
+	// iteration 1
+	for (int i=0; i<size; i++) { // count frequencies
+		freq[((unsigned char *)(&arr[i]))[0]]++; }
+	for (int i=1; i<256; i++) { // sum frequencies
+		freq[i] += freq[i-1]; }
+	for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
+		tmp[--freq[((unsigned char *)(&arr[i]))[0]]] = arr[i]; }
+	for (int i=0; i<256; i++) { // set frequencies to 0
+		freq[i] = 0; }
+
+	// iteration 2
+	for (int i=0; i<size; i++) {
+		freq[((unsigned char *)(&tmp[i]))[1]]++; }
+	for (int i=1; i<256; i++) {
+		freq[i] += freq[i-1]; }
+	for (int i=size-1; i >= 0; i--) {
+		arr[--freq[((unsigned char *)(&tmp[i]))[1]]] = tmp[i]; }
+	for (int i=0; i<256; i++) {
+		freq[i] = 0; }
+
+	// iteration 3
+	for (int i=0; i<size; i++) { // count frequencies
+		freq[((unsigned char *)(&arr[i]))[2]]++; }
+	for (int i=1; i<256; i++) { // sum frequencies
+		freq[i] += freq[i-1]; }
+	for (int i=size-1; i >= 0; i--) { // move nodes correct loc in tmp array
+		tmp[--freq[((unsigned char *)(&arr[i]))[2]]] = arr[i]; }
+	for (int i=0; i<256; i++) { // set frequencies to 0
+		freq[i] = 0; }
+
+	for (int i=0; i<size; i++) {
+		freq[((unsigned char *)(&tmp[i]))[3]]++; }
+	for (int i=1; i<256; i++) {
+		freq[i] += freq[i-1]; }
+	for (int i=size-1; i >= 0; i--) {
+		arr[--freq[((unsigned char *)(&tmp[i]))[3]]] = tmp[i]; }
+	for (int i=0; i<256; i++) {
+		freq[i] = 0; }
+
+	free(tmp);
+	return 0;
+}
+
 // Count all frequencies first, then move stuff around
 int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	int const buckets = 1 << bitsSortedOn;
@@ -785,8 +832,8 @@ void testBitsSortedOn(int N, int reps) {
 void initialTest();
 
 void testing(int test, string fileEnding) {
-	int start = 10000;
-	int inc   = 1000000;
+	int start = 10000000;
+	int inc   = 10000000;
 	int end   = start *  10;
 	ofstream results;
 	string testFunc = "";
@@ -811,6 +858,8 @@ void testing(int test, string fileEnding) {
 			 	 break;
 		case 10: testFunc = "10. radix sort freqs count with 2 tmps combined iteration";
 				 break;
+		case 11: testFunc = "02.1. radix sort wo copy back 8-b";
+				 break;
 		default: cerr << "unrecognized test value: " << test << endl;
 				 exit(1);
 	}
@@ -821,7 +870,7 @@ void testing(int test, string fileEnding) {
 		results << i << " bit" << ((i == 1) ? "," : ((i == 16) ? "" : ","));
 	}
 	results << "\n";
-	for (int k = start; k < end; k+=inc) {
+	for (int k = start; k <= end; k+=inc) {
 		results << k << ",";
 		for (int i=1; i<=16;i++) {
 			int *array = new int[k];
@@ -851,7 +900,9 @@ void testing(int test, string fileEnding) {
 				case 9: radixSortWoCountingFreqW2Tmps(array, k, i);
 						break;
 				case 10: radixSortWoCountingFreqW2TmpsCombinedIt(array, k, i);
-						break;
+						 break;
+				case 11: radixSortWoCopyBack8Bit(array, k);
+						 break;
 				default: cout << "this can't happen" << endl;
 			}
 			clock_t t2 = clock();
@@ -872,7 +923,8 @@ int main(int argc, char* argv[]) {
 			testName = argv[2];
 		}
 		testing(test, testName);
-	} 
+	} else {
+	}
 }
 
 void initialTest() {
