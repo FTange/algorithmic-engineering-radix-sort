@@ -821,6 +821,60 @@ int radixSortWoCountingFreqW2TmpsCombinedIt(int *arr, int size, int bitsSortedOn
 	return 0;
 }
 
+int radixSortWoCountingFreqW2TmpsCombinedIt8Bit(int *arr, int size) {
+	int const buckets = 256;
+	int freq[3][256] = {0};
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp1 = (int *) malloc(sizeof(int) * size * buckets);
+	int *tmp2 = (int *) malloc(sizeof(int) * size * buckets);
+
+	// begin by sorting into tmp
+	for (long i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		tmp1[freq[0][bucket]++ + size * bucket] = arr[i];
+	}
+
+	// sorts from tmp1 into tmp2
+	for (long bucket=0; bucket<buckets; bucket++) {
+		long bucketOffset = bucket * size, j = 0;
+		int elemsInBucket = freq[0][bucket];
+		freq[0][bucket] = 0;
+		while (j < elemsInBucket) {
+			long elem = tmp1[bucketOffset + j++];
+			long newBucket = ((unsigned char *)(&elem))[1];
+			tmp2[size * newBucket + freq[1][newBucket]++] = elem;
+		}
+	}
+	// sort from tmp1 into tm2 and count freqs for tmp1 to arr
+	for (long bucket=0; bucket<buckets; bucket++) {
+		long bucketOffset = bucket * size, j = 0;
+		int elemsInBucket = freq[1][bucket];
+		while (j < elemsInBucket) {
+			long elem = tmp2[bucketOffset + j++];
+			long newBucket = ((unsigned char *)(&elem))[2];
+			long index = size * newBucket + freq[0][newBucket]++;
+			tmp1[index] = elem;
+			freq[2][((unsigned char *)(&elem))[3]]++;
+		}
+	}
+	for (int i=1; i<buckets;i++) {
+		freq[2][i] += freq[2][i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		int elemsInBucket = freq[0][bucket];
+		while (elemsInBucket != 0) {
+			int currElem = tmp1[bucketOffset + --elemsInBucket];
+			int index = --freq[2][((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp1); free(tmp2);
+	return 0;
+}
+
+
 int msdLsdRadixSort(int *arr, int size, int msdBits, int lsdBits) {
 	int const msdBuckets = 1 << msdBits;
 	int bitMask = msdBuckets-1;
@@ -1030,7 +1084,7 @@ void testingMatrix8Bit(int test, string fileEnding) {
 	ofstream results;
 	string testFunc = "";
 
-	results.open("data/ matrix 8 bit " + fileEnding + ".csv");
+	results.open("data/matrix 8 bit " + fileEnding + ".csv");
 	results << "input,";
 	results << "wo counting freq,";
 	results << "wo counting freq combined last it,";
@@ -1084,9 +1138,8 @@ void testingStandard8Bit(int test, string fileEnding) {
 	int repetitions = 1;
 	ofstream results;
 	string testFunc = "";
-	cout << "testing" << endl;
 
-	results.open("data/test on 8 bit " + fileEnding + ".csv");
+	results.open("data/standard 8 bit " + fileEnding + ".csv");
 	results << "input,";
 	results << "standard,";
 	results << "copy back,";
