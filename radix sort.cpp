@@ -874,6 +874,119 @@ int radixSortWoCountingFreqW2TmpsCombinedIt8Bit(int *arr, int size) {
 	return 0;
 }
 
+int radixSortWoCountingFreqW2TmpsCombinedIt8BitWriteBuffer(int *arr, int size) {
+	int const buckets = 256;
+	int freq[3][256] = {0};
+	int writeBuffer[256][8];
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp1 = (int *) malloc(sizeof(int) * size * buckets);
+	int *tmp2 = (int *) malloc(sizeof(int) * size * buckets);
+
+	// begin by sorting into tmp
+	for (long i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		int bufferIndex = freq[0][bucket] & 7;
+		writeBuffer[bucket][bufferIndex] = arr[i];
+		freq[0][bucket]++;
+		if ((freq[0][bucket] & 7) == 0) {
+			long bucketOffset = size * bucket;
+			int currFreq = freq[0][bucket];
+			tmp1[bucketOffset + currFreq - 8] = writeBuffer[bucket][0];
+			tmp1[bucketOffset + currFreq - 7] = writeBuffer[bucket][1];
+			tmp1[bucketOffset + currFreq - 6] = writeBuffer[bucket][2];
+			tmp1[bucketOffset + currFreq - 5] = writeBuffer[bucket][3];
+			tmp1[bucketOffset + currFreq - 4] = writeBuffer[bucket][4];
+			tmp1[bucketOffset + currFreq - 3] = writeBuffer[bucket][5];
+			tmp1[bucketOffset + currFreq - 2] = writeBuffer[bucket][6];
+			tmp1[bucketOffset + currFreq - 1] = writeBuffer[bucket][7];
+		}
+	}
+	for (long i = 0; i < buckets; i++) {
+		long bucketOffset = size * i;
+		for (int j = (freq[0][i] & 7)-1, k=1; j >= 0; j--,k++) {
+			tmp1[bucketOffset + freq[0][i] - k] = writeBuffer[i][j];
+		}
+	}
+
+	// sorts from tmp1 into tmp2
+	for (long bucket=0; bucket<buckets; bucket++) {
+		long bucketOffset = bucket * size, j = 0;
+		int elemsInBucket = freq[0][bucket];
+		freq[0][bucket] = 0;
+		while (j < elemsInBucket) {
+			long elem = tmp1[bucketOffset + j++];
+			long newBucket = ((unsigned char *)(&elem))[1];
+			int bufferIndex = freq[1][newBucket] & 7;
+			writeBuffer[newBucket][bufferIndex] = elem;
+			freq[1][newBucket]++;
+			if ((freq[1][newBucket] & 7) == 0) {
+				long bucketOffset = size * newBucket;
+				int currFreq = freq[1][newBucket];
+				tmp2[bucketOffset + currFreq - 8] = writeBuffer[newBucket][0];
+				tmp2[bucketOffset + currFreq - 7] = writeBuffer[newBucket][1];
+				tmp2[bucketOffset + currFreq - 6] = writeBuffer[newBucket][2];
+				tmp2[bucketOffset + currFreq - 5] = writeBuffer[newBucket][3];
+				tmp2[bucketOffset + currFreq - 4] = writeBuffer[newBucket][4];
+				tmp2[bucketOffset + currFreq - 3] = writeBuffer[newBucket][5];
+				tmp2[bucketOffset + currFreq - 2] = writeBuffer[newBucket][6];
+				tmp2[bucketOffset + currFreq - 1] = writeBuffer[newBucket][7];
+			}
+		}
+	}
+	for (long i = 0; i < buckets; i++) {
+		long bucketOffset = size * i;
+		for (int j = (freq[1][i] & 7)-1, k=1; j >= 0; j--,k++) {
+			tmp2[bucketOffset + freq[1][i] - k] = writeBuffer[i][j];
+		}
+	}
+	// sort from tmp1 into tm2 and count freqs for tmp1 to arr
+	for (long bucket=0; bucket<buckets; bucket++) {
+		long bucketOffset = bucket * size, j = 0;
+		int elemsInBucket = freq[1][bucket];
+		while (j < elemsInBucket) {
+			long elem = tmp2[bucketOffset + j++];
+			long newBucket = ((unsigned char *)(&elem))[2];
+			int bufferIndex = freq[0][newBucket] & 7;
+			writeBuffer[newBucket][bufferIndex] = elem;
+			freq[0][newBucket]++;
+			freq[2][((unsigned char *)(&elem))[3]]++;
+			if ((freq[0][newBucket] & 7) == 0) {
+				long bucketOffset = size * newBucket;
+				int currFreq = freq[0][newBucket];
+				tmp1[bucketOffset + currFreq - 8] = writeBuffer[newBucket][0];
+				tmp1[bucketOffset + currFreq - 7] = writeBuffer[newBucket][1];
+				tmp1[bucketOffset + currFreq - 6] = writeBuffer[newBucket][2];
+				tmp1[bucketOffset + currFreq - 5] = writeBuffer[newBucket][3];
+				tmp1[bucketOffset + currFreq - 4] = writeBuffer[newBucket][4];
+				tmp1[bucketOffset + currFreq - 3] = writeBuffer[newBucket][5];
+				tmp1[bucketOffset + currFreq - 2] = writeBuffer[newBucket][6];
+				tmp1[bucketOffset + currFreq - 1] = writeBuffer[newBucket][7];
+			}
+		}
+	}
+	for (long i = 0; i < buckets; i++) {
+		long bucketOffset = size * i;
+		for (int j = (freq[0][i] & 7)-1, k=1; j >= 0; j--,k++) {
+			tmp1[bucketOffset + freq[0][i] - k] = writeBuffer[i][j];
+		}
+	}
+	for (int i=1; i<buckets;i++) {
+		freq[2][i] += freq[2][i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		int elemsInBucket = freq[0][bucket];
+		while (elemsInBucket != 0) {
+			int currElem = tmp1[bucketOffset + --elemsInBucket];
+			int index = --freq[2][((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp1); free(tmp2);
+	return 0;
+}
+
 
 int msdLsdRadixSort(int *arr, int size, int msdBits, int lsdBits) {
 	int const msdBuckets = 1 << msdBits;
