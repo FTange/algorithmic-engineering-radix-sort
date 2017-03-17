@@ -400,6 +400,57 @@ int radixSortWoCountingFreqCopyBackArr(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+int radixSortWoCountingFreqCopyBackArr8Bit(int *arr, int size) {
+	int const buckets = 256;
+	int const bitMask = 255;
+	int freqTmp[256] = {0};
+	int freqArr[256] = {0};
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+
+	// Iteration 1
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		tmp[freqTmp[bucket]++ + size * bucket] = arr[i];
+		freqArr[((unsigned char *)(&arr[i]))[1]]++;
+	}
+	// Iteration 2
+	for (int i = 1; i < buckets; i++) {
+		freqArr[i] += freqArr[i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freqTmp[bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freqTmp[bucket]];
+			int index = --freqArr[((unsigned char *)(&currElem))[1]];
+			arr[index] = currElem;
+		}
+	}
+	for (int i = 0; i < buckets; i++) {
+		freqArr[i] = 0;
+	}
+	// Iteration 3
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[2];
+		tmp[freqTmp[bucket]++ + size * bucket] = arr[i];
+		freqArr[((unsigned char *)(&arr[i]))[3]]++;
+	}
+	// Iteration 4
+	for (int i = 1; i < buckets; i++) {
+		freqArr[i] += freqArr[i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freqTmp[bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freqTmp[bucket]];
+			int index = --freqArr[((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp);
+	return 0;
+}
 
 /*
  * Version hardcoded for sorting for 8 bit by using unsigned char array
@@ -924,8 +975,8 @@ void testing(int test, string fileEnding) {
 void testingMatrix8Bit(int test, string fileEnding) {
 	int start = 10000000;
 	int inc   = 10000000;
-	int end   = start *  30;
-	int repetitions = 2;
+	int end   = start *  29;
+	int repetitions = 1;
 	ofstream results;
 	string testFunc = "";
 
@@ -979,8 +1030,8 @@ void testingMatrix8Bit(int test, string fileEnding) {
 void testingStandard8Bit(int test, string fileEnding) {
 	int start = 10000000;
 	int inc   = 10000000;
-	int end   = start *  1;
-	int repetitions = 2;
+	int end   = start *  29;
+	int repetitions = 1;
 	ofstream results;
 	string testFunc = "";
 	cout << "testing" << endl;
@@ -1036,6 +1087,7 @@ int main(int argc, char* argv[]) {
 			testing(test, testName);
 		}
 	} else {
+	}
 }
 
 void initialTest() {
