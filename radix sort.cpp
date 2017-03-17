@@ -218,6 +218,56 @@ int radixSortFreqFirst(int *arr, int size, int bitsSortedOn) {
 	return 0;
 }
 
+int radixSortFreqFirst8Bit(int *arr, int size) {
+	int const buckets = 256;
+	int freq[4][256] = {0};
+	int *tmp = (int *) malloc(sizeof(int) * size);
+
+	// Calculate frequencies for every pass at the same time
+	for (int elem = 0; elem < size; elem++) {
+		freq[0][((unsigned char *)(&arr[elem]))[0]]++;
+		freq[1][((unsigned char *)(&arr[elem]))[1]]++;
+		freq[2][((unsigned char *)(&arr[elem]))[2]]++;
+		freq[3][((unsigned char *)(&arr[elem]))[3]]++;
+	}
+	// Is it better to use 4 loops? one for each column
+	// Still constant time since size is fixed
+	for (int j=1; j<256; j++) {
+		freq[0][j] += freq[0][j-1];
+		freq[1][j] += freq[1][j-1];
+		freq[2][j] += freq[2][j-1];
+		freq[3][j] += freq[3][j-1];
+	}
+
+	// Iteration 1
+	for (int elem = size-1; elem >= 0; elem--) {
+		int index = --freq[0][((unsigned char *)(&arr[elem]))[0]];
+		tmp[index] = arr[elem];
+	}
+
+	// Iteration 2
+	for (int elem = size-1; elem >= 0; elem--) {
+		int index = --freq[1][((unsigned char *)(&tmp[elem]))[1]];
+		arr[index] = tmp[elem];
+	}
+
+	// Iteration 3
+	for (int elem = size-1; elem >= 0; elem--) {
+		int index = --freq[2][((unsigned char *)(&arr[elem]))[2]];
+		tmp[index] = arr[elem];
+	}
+
+	// Iteration 4
+	for (int elem = size-1; elem >= 0; elem--) {
+		int index = --freq[3][((unsigned char *)(&tmp[elem]))[3]];
+		arr[index] = tmp[elem];
+	}
+
+	free(tmp);
+	return 0;
+}
+
+
 /*
  * Idea from algorithm 1 in article
  * Allocate buckets for each possible value for the sorted in bits
