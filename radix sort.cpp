@@ -502,6 +502,103 @@ int radixSortWoCountingFreqCopyBackArr8Bit(int *arr, int size) {
 	return 0;
 }
 
+int radixSortWoCountingFreqCopyBackArr8BitWriteBuffer(int *arr, int size) {
+	int const buckets = 256;
+	int const bitMask = 255;
+	int freqTmp[256] = {0};
+	int freqArr[256] = {0};
+	int writeBuffer[buckets][8];
+	// can't use new since buckets and size aren't known and compile time
+	int *tmp = (int *) malloc(sizeof(int) * size * buckets);
+
+	// Iteration 1
+	// use buffer here
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[0];
+		int bufferIndex = freqTmp[bucket] & 7;
+		writeBuffer[bucket][bufferIndex] = arr[i];
+		freqTmp[bucket]++;
+		if ((freqTmp[bucket] & 7) == 0) {
+			long bucketOffset = size * bucket;
+			int currFreq = freqTmp[bucket];
+			tmp[bucketOffset + currFreq - 8] = writeBuffer[bucket][0];
+			tmp[bucketOffset + currFreq - 7] = writeBuffer[bucket][1];
+			tmp[bucketOffset + currFreq - 6] = writeBuffer[bucket][2];
+			tmp[bucketOffset + currFreq - 5] = writeBuffer[bucket][3];
+			tmp[bucketOffset + currFreq - 4] = writeBuffer[bucket][4];
+			tmp[bucketOffset + currFreq - 3] = writeBuffer[bucket][5];
+			tmp[bucketOffset + currFreq - 2] = writeBuffer[bucket][6];
+			tmp[bucketOffset + currFreq - 1] = writeBuffer[bucket][7];
+		}
+		freqArr[((unsigned char *)(&arr[i]))[1]]++;
+	}
+	for (long i = 0; i < buckets; i++) {
+		long bucketOffset = size * i;
+		for (int j = (freqTmp[i] & 7)-1, k=1; j >= 0; j--,k++) {
+			tmp[bucketOffset + freqTmp[i] - k] = writeBuffer[i][j];
+		}
+	}
+	// Iteration 2
+	for (int i = 1; i < buckets; i++) {
+		freqArr[i] += freqArr[i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freqTmp[bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freqTmp[bucket]];
+			int index = --freqArr[((unsigned char *)(&currElem))[1]];
+			arr[index] = currElem;
+		}
+	}
+	for (int i = 0; i < buckets; i++) {
+		freqArr[i] = 0;
+	}
+	// Iteration 3
+	// use write buffer here
+	for (int i=0; i < size; i++) {
+		long bucket = ((unsigned char *)(&arr[i]))[2];
+		int bufferIndex = freqTmp[bucket] & 7;
+		writeBuffer[bucket][bufferIndex] = arr[i];
+		freqTmp[bucket]++;
+		if ((freqTmp[bucket] & 7) == 0) {
+			long bucketOffset = size * bucket;
+			int currFreq = freqTmp[bucket];
+			tmp[bucketOffset + currFreq - 8] = writeBuffer[bucket][0];
+			tmp[bucketOffset + currFreq - 7] = writeBuffer[bucket][1];
+			tmp[bucketOffset + currFreq - 6] = writeBuffer[bucket][2];
+			tmp[bucketOffset + currFreq - 5] = writeBuffer[bucket][3];
+			tmp[bucketOffset + currFreq - 4] = writeBuffer[bucket][4];
+			tmp[bucketOffset + currFreq - 3] = writeBuffer[bucket][5];
+			tmp[bucketOffset + currFreq - 2] = writeBuffer[bucket][6];
+			tmp[bucketOffset + currFreq - 1] = writeBuffer[bucket][7];
+		}
+		freqArr[((unsigned char *)(&arr[i]))[3]]++;
+	}
+	for (long i = 0; i < buckets; i++) {
+		long bucketOffset = size * i;
+		for (int j = (freqTmp[i] & 7)-1, k=1; j >= 0; j--,k++) {
+			tmp[bucketOffset + freqTmp[i] - k] = writeBuffer[i][j];
+		}
+	}
+	// Iteration 4
+	for (int i = 1; i < buckets; i++) {
+		freqArr[i] += freqArr[i-1];
+	}
+	for (long bucket=buckets-1; bucket>=0; bucket--) {
+		long bucketOffset = bucket * size;
+		while (freqTmp[bucket] != 0) {
+			int currElem = tmp[bucketOffset + --freqTmp[bucket]];
+			int index = --freqArr[((unsigned char *)(&currElem))[3]];
+			arr[index] = currElem;
+		}
+	}
+
+	free(tmp);
+	return 0;
+}
+
+
+
 /*
  * Version hardcoded for sorting for 8 bit by using unsigned char array
  * to access each byte and loop unrolling, about 10% faster
@@ -1192,8 +1289,8 @@ void testing(int test, string fileEnding) {
 void testingMatrix8Bit(int test, string fileEnding) {
 	int start = 10000000;
 	int inc   = 10000000;
-	int end   = start *  29;
-	int repetitions = 1;
+	int end   = start *  50;
+	int repetitions = 3;
 	ofstream results;
 	string testFunc = "";
 
@@ -1247,8 +1344,8 @@ void testingMatrix8Bit(int test, string fileEnding) {
 void testingStandard8Bit(int test, string fileEnding) {
 	int start = 10000000;
 	int inc   = 10000000;
-	int end   = start *  29;
-	int repetitions = 1;
+	int end   = start *  50;
+	int repetitions = 3;
 	ofstream results;
 	string testFunc = "";
 
@@ -1288,6 +1385,193 @@ void testingStandard8Bit(int test, string fileEnding) {
 	results.close();
 }
 
+void testing8BitHardcoded(int test, string fileEnding) {
+	int start = 10000000;
+	int inc   = 10000000;
+	int end   = start *  50;
+	int repetitions = 3;
+	ofstream results;
+	string testFunc = "";
+
+	results.open("data/8 bit hardcoded" + fileEnding + ".csv");
+	results << "input,";
+	results << "wo copy back,";
+	results << "freqs first,";
+	results << "sort back arr,";
+	results << "sort back arr write buffer,";
+	results << "version 2,";
+	results << "2 tmp combined iteration,";
+	results << "2 tmp combined iteration write buffer";
+	results << "\n";
+	for (int k = start; k <= end; k+=inc) {
+		results << k << ",";
+		int *array = new int[k];
+		for (int i=1; i<=7;i++) {
+			long time = 0;
+			for (int rep=0; rep<repetitions;rep++) {
+				srand(24); // use srand to make the arrays identical
+				for (int j = 0; j<k; j++) {
+					array[j] = rand();
+				}
+				clock_t t = clock();
+				switch(i) {
+					case 1: radixSortWoCopyBack8Bit(array, k);
+							break;
+					case 2: radixSortFreqFirst8Bit(array, k);
+							break;
+					case 3: radixSortWoCountingFreqCopyBackArr8Bit(array, k);
+							break;
+					case 4: radixSortWoCountingFreqCopyBackArr8BitWriteBuffer(array, k);
+							break;
+					case 5: radixSortWoCountingFreq8Bitv2(array, k);
+							break;
+					case 6: radixSortWoCountingFreqW2TmpsCombinedIt8Bit(array, k);
+							break;
+					case 7: radixSortWoCountingFreqW2TmpsCombinedIt8BitWriteBuffer(array, k);
+							break;
+					default: cout << "this can't happen" << endl;
+				}
+				time += clock() - t;
+			}
+			results << (time / repetitions) << ((i != 7) ? "," : "");
+		}
+		results << endl;
+		delete[] array;
+	}
+	results.close();
+}
+
+void testing8BitHardcoded2(int test, string fileEnding) {
+	int start = 312999850;
+	int inc = 10;
+	int end = 313000050;
+	int repetitions = 2;
+	ofstream results;
+	string testFunc = "";
+
+	results.open("data/8 bit hardcoded anomalies" + fileEnding + ".csv");
+	results << "input,";
+	results << "sort back arr,";
+	results << "2 tmp combined iteration";
+	results << "\n";
+	for (int k = start; k <= end; k= k+inc) {
+		results << k << ",";
+		int *array = new int[k];
+		for (int i=1; i<=2;i++) {
+			long time = 0;
+			for (int rep=0; rep<repetitions;rep++) {
+				srand(25); // use srand to make the arrays identical
+				for (int j = 0; j<k; j++) {
+					array[j] = rand();
+				}
+				clock_t t = clock();
+				switch(i) {
+					case 1: radixSortWoCountingFreqCopyBackArr8Bit(array, k);
+							break;
+					case 2: radixSortWoCountingFreqW2TmpsCombinedIt8Bit(array, k);
+							break;
+					default: cout << "this can't happen" << endl;
+				}
+				time += clock() - t;
+			}
+			results << (time / repetitions) << ((i != 2) ? "," : "");
+		}
+		cout << "test 1 done on " << k << " out of " << end << endl;
+		results << endl;
+		delete[] array;
+	}
+	results.close();
+}
+
+void testingStdSort(int test, string fileEnding) {
+	int start = 20000000;
+	int inc   = 20000000;
+	int end = 1000000000;
+	int repetitions = 3;
+	ofstream results;
+	string testFunc = "";
+
+	results.open("data/std sort" + fileEnding + ".csv");
+	results << "input,";
+	results << "sort back arr,";
+	results << "std sort";
+	results << "\n";
+	for (int k = start; k <= end; k+=inc) {
+		results << k << ",";
+		int *array = new int[k];
+		for (int i=1; i<=2;i++) {
+			long time = 0;
+			for (int rep=0; rep<repetitions;rep++) {
+				srand(24); // use srand to make the arrays identical
+				for (int j = 0; j<k; j++) {
+					array[j] = rand();
+				}
+				clock_t t = clock();
+				switch(i) {
+					case 1: radixSortWoCountingFreqCopyBackArr8Bit(array, k);
+							break;
+					case 2: sort(array, array+k);
+							break;
+					default: cout << "this can't happen" << endl;
+				}
+				time += clock() - t;
+			}
+			results << (time / repetitions) << ((i != 4) ? "," : "");
+		}
+		cout << "test 2 done on " << k << " out of " << end << endl;
+		results << endl;
+		delete[] array;
+	}
+	results.close();
+}
+
+void testingStdSortAlmostSorted(int test, string fileEnding) {
+	int start = 0;
+	int inc   = 1000;
+	int end = 200000000;
+	int repetitions = 2;
+	ofstream results;
+	string testFunc = "";
+
+	results.open("data/standard sort almost sorted" + fileEnding + ".csv");
+	results << "input,";
+	results << "sort back arr,";
+	results << "std sort";
+	results << "\n";
+
+	for (int k = start; k <= 150000; k+=inc) {
+		results << k << ",";
+		int *array = new int[end];
+		int *array2 = new int[end];
+		array[0] = 0;
+		long timeRadix = 0;
+		long timeStd = 0;
+		for (int rep=0; rep<repetitions;rep++) {
+			srand(24); // use srand to make the arrays identical
+			for (int j = 1; j<end; j++) {
+				array[j] = array[j-1] + 10;
+			}
+			for (int j = 0; j<k; j++) {
+				array[rand() % end] = rand();
+			}
+			for (int j = 0; j<end; j++) {
+				array2[j] = array[j];
+			}
+			clock_t t = clock();
+			radixSortWoCountingFreqCopyBackArr8Bit(array, end);
+			timeRadix += clock() - t;
+			t = clock();
+			sort(array2, array2+end);
+			timeStd += clock() - t;
+		}
+		results << (timeRadix / repetitions) << "," << (timeStd / repetitions) << endl;
+		delete[] array;
+		delete[] array2;
+		cout << "test 3 done on " << k << " out of " << end << endl;
+	}
+	results.close();
+}
+
 int main(int argc, char* argv[]) {
 	if (argc != 1) {
 		int test = atoi(argv[1]);
@@ -1299,6 +1583,14 @@ int main(int argc, char* argv[]) {
 			testingStandard8Bit(test, testName);
 		} else if (test == 13) {
 			testingMatrix8Bit(test, testName);
+		} else if (test == 14) {
+			testing8BitHardcoded(test, testName);
+		} else if (test == 15) {
+			testing8BitHardcoded2(test, testName);
+		} else if (test == 16) {
+			testingStdSort(test, testName);
+		} else if (test == 17) {
+			testingStdSortAlmostSorted(test, testName);
 		} else {
 			testing(test, testName);
 		}
